@@ -247,6 +247,7 @@ private:
     
     AP_Int32 vehicleSerialNumber;
 
+    AP_Int8 pwm_count;
     struct {
         AP_Int8 safety_enable;
         AP_Int16 safety_option;
@@ -338,6 +339,7 @@ private:
     AP_Int32 _options;
 
     AP_Int8  _alt_config;
+    
 };
 
 namespace AP {

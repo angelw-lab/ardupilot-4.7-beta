@@ -1443,8 +1443,8 @@ bool NavEKF3::setOriginLLH(const Location &loc)
     if (common_origin_valid) {
         // we don't allow setting the EKF origin if it has already been set
         // this is to prevent causing upsets from a shifting origin.
-        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "EKF3: origin already set");
-        return false;
+    GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "EKF3 refusing set origin");
+        // return false;
     }
     bool ret = false;
     for (uint8_t i=0; i<num_cores; i++) {

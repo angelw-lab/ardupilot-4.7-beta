@@ -188,6 +188,7 @@ public:
         k_param_failsafe_pilot_input,
         k_param_failsafe_pilot_input_timeout,
         k_param_failsafe_gcs_timeout,
+        k_param_failsafe_warning_interval,  // interval between successive warnings in case failsafe is triggered   
 
 
         // Misc Sub settings
@@ -275,6 +276,7 @@ public:
     AP_Int8         failsafe_pilot_input;       // pilot input failsafe behavior
     AP_Float        failsafe_pilot_input_timeout;
     AP_Float        failsafe_gcs_timeout;       // ground station failsafe timeout (seconds)
+    AP_Int16        failsafe_warning_interval;  // interval in milliseconds between failsafe warning messages
 
     AP_Int8         xtrack_angle_limit;
 

@@ -141,6 +141,11 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @Values: 1.0:Freshwater,1.024:Saltwater
     // @Range: 0.98 1.05
     AP_GROUPINFO_FRAME("_SPEC_GRAV", 8, AP_Baro, _specific_gravity, 1.0, AP_PARAM_FRAME_SUB),
+    // @Param{Sub}: _ZERO_PRESS
+    // @DisplayName: Zero Pressure Reference (For water depth measurement)
+    // @Description: This sets the zero pressure reference of the fluid when flying an underwater ROV.
+    // @Values: -1.0: Disable, millibar value to use
+    AP_GROUPINFO_FRAME("_ZERO_PRESS", 26, AP_Baro, _zero_pressure, -1.0, AP_PARAM_FRAME_SUB),
 
 #if BARO_MAX_INSTANCES > 1
     // @Param: 2_GND_PRESS
