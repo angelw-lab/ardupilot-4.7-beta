@@ -232,6 +232,19 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         add_motor_raw_6dof(AP_MOTORS_MOT_5,	    0,                              _motor_gain_cont[4]*1.0f,	    0, 	                                 _motor_gain_cont[4]*1.0f,	             0,                                     0,   	                            5);
         add_motor_raw_6dof(AP_MOTORS_MOT_6,	    0,                              _motor_gain_cont[5]*-1.0f,	    0, 	                                 _motor_gain_cont[5]*1.0f,	             0,                                     0,   	                            6);
         break;
+     case SUB_FRAME_LROV:
+    _frame_class_string = "EYEROV_LROV";
+       add_motor_raw_6dof(AP_MOTORS_MOT_1, 0,                                   0,                              _motor_gain_cont[0]*1.0f,            0,                                     _motor_gain_cont[0]*-1.0f,               _motor_gain_cont[0]*1.0f,          1);
+       add_motor_raw_6dof(AP_MOTORS_MOT_2, 0,                                   0,                              _motor_gain_cont[1]*-1.0f,           0,                                     _motor_gain_cont[1]*-1.0f,               _motor_gain_cont[1]*-1.0f,         2);
+       add_motor_raw_6dof(AP_MOTORS_MOT_3, 0,                                   0,                              _motor_gain_cont[2]*1.0f,            0,                                     _motor_gain_cont[2]*1.0f,                _motor_gain_cont[2]*1.0f,          3);
+       add_motor_raw_6dof(AP_MOTORS_MOT_4, 0,                                   0,                              _motor_gain_cont[3]*-1.0f,           0,                                     _motor_gain_cont[3]*1.0f,                _motor_gain_cont[3]*-1.0f,         4);
+       add_motor_raw_6dof(AP_MOTORS_MOT_5, _motor_gain_cont[4]*-1.0f,           _motor_gain_cont[4]*1.0f,       0,                                  _motor_gain_cont[4]*1.0f,                0,                                       0,                                5);
+       add_motor_raw_6dof(AP_MOTORS_MOT_6, _motor_gain_cont[5]*1.0f,            _motor_gain_cont[5]*1.0f,       0,                                  _motor_gain_cont[5]*1.0f,                0,                                       0,                                6);
+       add_motor_raw_6dof(AP_MOTORS_MOT_7, _motor_gain_cont[6]*-1.0f,           _motor_gain_cont[6]*-1.0f,      0,                                  _motor_gain_cont[6]*1.0f,                0,                                       0,                                7);
+       add_motor_raw_6dof(AP_MOTORS_MOT_8, _motor_gain_cont[7]*1.0f,            _motor_gain_cont[7]*-1.0f,      0,                                  _motor_gain_cont[7]*1.0f,                0,                                       0,                                8);
+
+    break;
+    
     default:
         _frame_class_string = "DEFAULT";
         add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              -1.0f,          0,                  1.0f,               0,              1);
