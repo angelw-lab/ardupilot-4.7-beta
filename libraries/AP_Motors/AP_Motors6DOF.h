@@ -40,7 +40,7 @@ public:
     void output_min() override;
 
     // Map thrust input -1~1 to pwm output 1100~1900
-    int16_t calc_thrust_to_pwm(float thrust_in) const;
+  int16_t calc_thrust_to_pwm(float thrust_in, uint8_t i) const;
 
     // output_to_motors - sends minimum values out to the motors
     void output_to_motors() override;
@@ -73,7 +73,16 @@ protected:
     AP_Int8             _motor_reverse[AP_MOTORS_MAX_NUM_MOTORS];
     AP_Float            _motor_gain_cont[AP_MOTORS_MAX_NUM_MOTORS];
     AP_Float            _forwardVerticalCouplingFactor;
+    // Axis gain adjustment parameters
+    AP_Float            _roll_gain[AP_MOTORS_MAX_NUM_MOTORS];
+    AP_Float            _pitch_gain[AP_MOTORS_MAX_NUM_MOTORS];
+    AP_Float            _yaw_gain[AP_MOTORS_MAX_NUM_MOTORS];
+    AP_Float            _throttle_gain[AP_MOTORS_MAX_NUM_MOTORS];
+    AP_Float            _forward_gain[AP_MOTORS_MAX_NUM_MOTORS];
+    AP_Float            _lateral_gain[AP_MOTORS_MAX_NUM_MOTORS];
 
+    float               _fwd_rev_ratio[AP_MOTORS_MAX_NUM_MOTORS];
+    
     float               _forward_factor[AP_MOTORS_MAX_NUM_MOTORS]; // each motors contribution to forward/backward
     float               _lateral_factor[AP_MOTORS_MAX_NUM_MOTORS];  // each motors contribution to lateral (left/right)
 
