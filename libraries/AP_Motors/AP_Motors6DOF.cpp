@@ -1,3 +1,11 @@
+// ============================================================================
+//  AP_Motors6DOF.cpp - EyeROV TROUT parameterised build (ArduSub axes: x fwd, y stbd, z DOWN)
+//  Requires in AP_Motors6DOF.h:
+//      AP_Float _tf[7][6];   // per-motor mixer factors (roll,pitch,yaw,thr,fwd,lat)
+//      AP_Float _frr[7];     // per-motor forward/reverse thrust ratio
+//      int16_t calc_thrust_to_pwm(float thrust_in, uint8_t motor) const;  // sig change
+//  Author: Vishal Raveendranathan - Senior Manager, R&D
+// ============================================================================
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -135,193 +143,40 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
 
     AP_GROUPINFO("8MOTOR_G_ADJ", 21, AP_Motors6DOF, _motor_gain_cont[7], 1),
 
-  // -----------------------------------------------------------------------------
-// Motor 1 Axis Gain Adjust
-// -----------------------------------------------------------------------------
+    // ---- EYEROV_TROUT parameterised mixer factors & fwd/rev ratios ----
+    AP_GROUPINFO("MOT1_YAW", 22, AP_Motors6DOF, _tf[0][2], 1.00f),
+    AP_GROUPINFO("MOT1_FWD", 23, AP_Motors6DOF, _tf[0][4], -1.00f),
+    AP_GROUPINFO("MOT1_LAT", 24, AP_Motors6DOF, _tf[0][5], 1.00f),
+    AP_GROUPINFO("MOT2_YAW", 25, AP_Motors6DOF, _tf[1][2], -1.00f),
+    AP_GROUPINFO("MOT2_FWD", 26, AP_Motors6DOF, _tf[1][4], -1.00f),
+    AP_GROUPINFO("MOT2_LAT", 27, AP_Motors6DOF, _tf[1][5], -1.00f),
+    AP_GROUPINFO("MOT3_YAW", 28, AP_Motors6DOF, _tf[2][2], -1.00f),
+    AP_GROUPINFO("MOT3_FWD", 29, AP_Motors6DOF, _tf[2][4], 1.00f),
+    AP_GROUPINFO("MOT3_LAT", 30, AP_Motors6DOF, _tf[2][5], 0.78f),
+    AP_GROUPINFO("MOT4_YAW", 31, AP_Motors6DOF, _tf[3][2], 1.00f),
+    AP_GROUPINFO("MOT4_FWD", 32, AP_Motors6DOF, _tf[3][4], 1.00f),
+    AP_GROUPINFO("MOT4_LAT", 33, AP_Motors6DOF, _tf[3][5], -0.78f),
+    AP_GROUPINFO("MOT5_ROL", 34, AP_Motors6DOF, _tf[4][0], -1.00f),
+    AP_GROUPINFO("MOT5_PIT", 35, AP_Motors6DOF, _tf[4][1], 1.00f),
+    AP_GROUPINFO("MOT5_THR", 36, AP_Motors6DOF, _tf[4][3], 1.00f),
+    AP_GROUPINFO("MOT5_FWD", 37, AP_Motors6DOF, _tf[4][4], 0.00f),
+    AP_GROUPINFO("MOT5_LAT", 38, AP_Motors6DOF, _tf[4][5], 0.00f),
+    AP_GROUPINFO("MOT6_ROL", 39, AP_Motors6DOF, _tf[5][0], 1.00f),
+    AP_GROUPINFO("MOT6_PIT", 40, AP_Motors6DOF, _tf[5][1], 1.00f),
+    AP_GROUPINFO("MOT6_THR", 41, AP_Motors6DOF, _tf[5][3], 1.00f),
+    AP_GROUPINFO("MOT6_FWD", 42, AP_Motors6DOF, _tf[5][4], 0.00f),
+    AP_GROUPINFO("MOT6_LAT", 43, AP_Motors6DOF, _tf[5][5], 0.00f),
+    AP_GROUPINFO("MOT7_PIT", 44, AP_Motors6DOF, _tf[6][1], -0.96f),
+    AP_GROUPINFO("MOT7_THR", 45, AP_Motors6DOF, _tf[6][3], 0.76f),
+    AP_GROUPINFO("MOT7_FWD", 46, AP_Motors6DOF, _tf[6][4], 0.00f),
+    AP_GROUPINFO("MOT1_FRR", 47, AP_Motors6DOF, _frr[0], 1.54f),
+    AP_GROUPINFO("MOT2_FRR", 48, AP_Motors6DOF, _frr[1], 1.54f),
+    AP_GROUPINFO("MOT3_FRR", 49, AP_Motors6DOF, _frr[2], 1.54f),
+    AP_GROUPINFO("MOT4_FRR", 50, AP_Motors6DOF, _frr[3], 1.54f),
+    AP_GROUPINFO("MOT5_FRR", 51, AP_Motors6DOF, _frr[4], 1.35f),
+    AP_GROUPINFO("MOT6_FRR", 52, AP_Motors6DOF, _frr[5], 1.35f),
+    AP_GROUPINFO("MOT7_FRR", 53, AP_Motors6DOF, _frr[6], 1.54f),
 
-// @Param: 1FWD_G_ADJ
-// @DisplayName: Motor 1 Forward Gain Adjustment
-// @Description: Adjusts the forward contribution of Motor 1.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("1FWD_G_ADJ", 22, AP_Motors6DOF, _forward_gain[0], 1),
-
-// @Param: 1LAT_G_ADJ
-// @DisplayName: Motor 1 Lateral Gain Adjustment
-// @Description: Adjusts the lateral contribution of Motor 1.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("1LAT_G_ADJ", 23, AP_Motors6DOF, _lateral_gain[0], 1),
-
-// @Param: 1YAW_G_ADJ
-// @DisplayName: Motor 1 Yaw Gain Adjustment
-// @Description: Adjusts the yaw contribution of Motor 1.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("1YAW_G_ADJ", 24, AP_Motors6DOF, _yaw_gain[0], 1),
-
-// -----------------------------------------------------------------------------
-// Motor 2 Axis Gain Adjust
-// -----------------------------------------------------------------------------
-
-// @Param: 2FWD_G_ADJ
-// @DisplayName: Motor 2 Forward Gain Adjustment
-// @Description: Adjusts the forward contribution of Motor 2.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("2FWD_G_ADJ", 25, AP_Motors6DOF, _forward_gain[1], 1),
-
-// @Param: 2LAT_G_ADJ
-// @DisplayName: Motor 2 Lateral Gain Adjustment
-// @Description: Adjusts the lateral contribution of Motor 2.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("2LAT_G_ADJ", 26, AP_Motors6DOF, _lateral_gain[1], 1),
-
-// @Param: 2YAW_G_ADJ
-// @DisplayName: Motor 2 Yaw Gain Adjustment
-// @Description: Adjusts the yaw contribution of Motor 2.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("2YAW_G_ADJ", 27, AP_Motors6DOF, _yaw_gain[1], 1),
-
-// -----------------------------------------------------------------------------
-// Motor 3 Axis Gain Adjust
-// -----------------------------------------------------------------------------
-
-// @Param: 3FWD_G_ADJ
-// @DisplayName: Motor 3 Forward Gain Adjustment
-// @Description: Adjusts the forward contribution of Motor 3.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("3FWD_G_ADJ", 28, AP_Motors6DOF, _forward_gain[2], 1),
-
-// @Param: 3LAT_G_ADJ
-// @DisplayName: Motor 3 Lateral Gain Adjustment
-// @Description: Adjusts the lateral contribution of Motor 3.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("3LAT_G_ADJ", 29, AP_Motors6DOF, _lateral_gain[2], 1),
-
-// @Param: 3YAW_G_ADJ
-// @DisplayName: Motor 3 Yaw Gain Adjustment
-// @Description: Adjusts the yaw contribution of Motor 3.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("3YAW_G_ADJ", 30, AP_Motors6DOF, _yaw_gain[2], 1),
-
-// -----------------------------------------------------------------------------
-// Motor 4 Axis Gain Adjust
-// -----------------------------------------------------------------------------
-
-// @Param: 4FWD_G_ADJ
-// @DisplayName: Motor 4 Forward Gain Adjustment
-// @Description: Adjusts the forward contribution of Motor 4.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("4FWD_G_ADJ", 31, AP_Motors6DOF, _forward_gain[3], 1),
-
-// @Param: 4LAT_G_ADJ
-// @DisplayName: Motor 4 Lateral Gain Adjustment
-// @Description: Adjusts the lateral contribution of Motor 4.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("4LAT_G_ADJ", 32, AP_Motors6DOF, _lateral_gain[3], 1),
-
-// @Param: 4YAW_G_ADJ
-// @DisplayName: Motor 4 Yaw Gain Adjustment
-// @Description: Adjusts the yaw contribution of Motor 4.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("4YAW_G_ADJ", 33, AP_Motors6DOF, _yaw_gain[3], 1),
-
-// -----------------------------------------------------------------------------
-// Motor 5 Axis Gain Adjust
-// -----------------------------------------------------------------------------
-
-// @Param: 5ROLL_G_ADJ
-// @DisplayName: Motor 5 Roll Gain Adjustment
-// @Description: Adjusts the roll contribution of Motor 5.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("5ROLL_G_ADJ", 34, AP_Motors6DOF, _roll_gain[4], 1),
-
-// @Param: 5PITCH_G_ADJ
-// @DisplayName: Motor 5 Pitch Gain Adjustment
-// @Description: Adjusts the pitch contribution of Motor 5.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("5PITCH_G_ADJ", 35, AP_Motors6DOF, _pitch_gain[4], 1),
-
-// @Param: 5THR_G_ADJ
-// @DisplayName: Motor 5 Throttle Gain Adjustment
-// @Description: Adjusts the throttle contribution of Motor 5.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("5THR_G_ADJ", 36, AP_Motors6DOF, _throttle_gain[4], 1),
-
-// -----------------------------------------------------------------------------
-// Motor 6 Axis Gain Adjust
-// -----------------------------------------------------------------------------
-
-// @Param: 6ROLL_G_ADJ
-// @DisplayName: Motor 6 Roll Gain Adjustment
-// @Description: Adjusts the roll contribution of Motor 6.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("6ROLL_G_ADJ", 37, AP_Motors6DOF, _roll_gain[5], 1),
-
-// @Param: 6PITCH_G_ADJ
-// @DisplayName: Motor 6 Pitch Gain Adjustment
-// @Description: Adjusts the pitch contribution of Motor 6.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("6PITCH_G_ADJ", 38, AP_Motors6DOF, _pitch_gain[5], 1),
-
-// @Param: 6THR_G_ADJ
-// @DisplayName: Motor 6 Throttle Gain Adjustment
-// @Description: Adjusts the throttle contribution of Motor 6.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("6THR_G_ADJ", 39, AP_Motors6DOF, _throttle_gain[5], 1),
-
-// -----------------------------------------------------------------------------
-// Motor 7 Axis Gain Adjust
-// -----------------------------------------------------------------------------
-
-// @Param: 7PITCH_G_ADJ
-// @DisplayName: Motor 7 Pitch Gain Adjustment
-// @Description: Adjusts the pitch contribution of Motor 7.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("7PITCH_G_ADJ", 40, AP_Motors6DOF, _pitch_gain[6], 1),
-
-// @Param: 7THR_G_ADJ
-// @DisplayName: Motor 7 Throttle Gain Adjustment
-// @Description: Adjusts the throttle contribution of Motor 7.
-// @Range: 0.0 2.0
-// @Increment: 0.01
-// @User: Advanced
-AP_GROUPINFO("7THR_G_ADJ", 41, AP_Motors6DOF, _throttle_gain[6], 1),
     AP_GROUPEND
 };
 
@@ -332,7 +187,7 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         remove_motor(i);
     }
 
-    // hard coded config for supported frames 
+    // hard coded config for supported frames
     switch ((sub_frame_t)frame_class) {
         //                 Motor #              Roll Factor     Pitch Factor    Yaw Factor      Throttle Factor     Forward Factor      Lateral Factor  Testing Order
     case SUB_FRAME_BLUEROV1:
@@ -402,23 +257,14 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
 
     case SUB_FRAME_TROUT:
         _frame_class_string = "EYEROV_TROUT";
-    // Forward/Reverse thrust ratios for TROUT
-    _fwd_rev_ratio[0] = 14.69f / 9.55f;  // MOT1
-    _fwd_rev_ratio[1] = 14.69f / 9.55f;  // MOT2
-    _fwd_rev_ratio[2] = 14.69f / 9.55f;  // MOT3
-    _fwd_rev_ratio[3] = 14.69f / 9.55f;  // MOT4
-
-    _fwd_rev_ratio[4] = 7.06f / 5.24f;   // MOT5
-    _fwd_rev_ratio[5] = 7.06f / 5.24f;   // MOT6
-
-    _fwd_rev_ratio[6] = 14.69f / 9.55f;  // MOT7
-        add_motor_raw_6dof(AP_MOTORS_MOT_1,	    0,	                                                  0,	                                           _yaw_gain[0] * 1.0f,	           0,	                                                     _forward_gain[0] * -1.0f,                _lateral_gain[0] * 1.0f,               1);
-        add_motor_raw_6dof(AP_MOTORS_MOT_2,	    0,                                                    0,	                                           _yaw_gain[1] * -1.0f,	       0,	                                                     _forward_gain[1] * -1.0f,	              _lateral_gain[1] * -1.0f,	             2);
-        add_motor_raw_6dof(AP_MOTORS_MOT_3,	    0,                                                    0,	                                           _yaw_gain[2] * -1.0f,           0,        	                                             _forward_gain[2] * 1.0f,                 _lateral_gain[2] * 0.79f,              3);
-        add_motor_raw_6dof(AP_MOTORS_MOT_4,	    0,                                                    0,                                               _yaw_gain[3] * 1.0f,            0,        	                                             _forward_gain[3] * 1.0f,                 _lateral_gain[3] * -0.79f,             4);
-        add_motor_raw_6dof(AP_MOTORS_MOT_5,	    _roll_gain[4] * -1.0f,                        _pitch_gain[4] * 1.0f,	                                   0, 	                                 _throttle_gain[4] * 0.70f,	                                      0,                                   0,   	                 5);
-        add_motor_raw_6dof(AP_MOTORS_MOT_6,	    _roll_gain[5] * 1.0f,                         _pitch_gain[5] * 1.0f,	                                   0, 	                                 _throttle_gain[5] * 0.70f,                                       0,                                   0,   	                 6);
-        add_motor_raw_6dof(AP_MOTORS_MOT_7,	    0,                                            _pitch_gain[6] * -0.96f,                                     0, 	                                  _throttle_gain[6] * 1.0f,                                       0,                                   0,   	                 7);
+        // Factors and fwd/rev ratios come from the parameters above (QGC-tunable, no reflash needed).
+        // _tf[m][axis]: 0=roll 1=pitch 2=yaw 3=throttle 4=forward 5=lateral. See TROUT_thrust_allocation.docx.
+        for (uint8_t m = 0; m < 7; m++) {
+            add_motor_raw_6dof(AP_MOTORS_MOT_1 + m,
+                               _tf[m][0], _tf[m][1], _tf[m][2],   // roll, pitch, yaw
+                               _tf[m][3], _tf[m][4], _tf[m][5],   // throttle, forward, lateral
+                               m + 1);
+        }
         break;
     case SUB_FRAME_TSROV:
         _frame_class_string = "EYEROV_TSROV";
@@ -429,19 +275,6 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         add_motor_raw_6dof(AP_MOTORS_MOT_5,	    0,                              _motor_gain_cont[4]*1.0f,	    0, 	                                 _motor_gain_cont[4]*1.0f,	             0,                                     0,   	                            5);
         add_motor_raw_6dof(AP_MOTORS_MOT_6,	    0,                              _motor_gain_cont[5]*-1.0f,	    0, 	                                 _motor_gain_cont[5]*1.0f,	             0,                                     0,   	                            6);
         break;
-     case SUB_FRAME_LROV:
-    _frame_class_string = "EYEROV_LROV";
-       add_motor_raw_6dof(AP_MOTORS_MOT_1, 0,                                   0,                              _motor_gain_cont[0]*1.0f,            0,                                     _motor_gain_cont[0]*-1.0f,               _motor_gain_cont[0]*1.0f,          1);
-       add_motor_raw_6dof(AP_MOTORS_MOT_2, 0,                                   0,                              _motor_gain_cont[1]*-1.0f,           0,                                     _motor_gain_cont[1]*-1.0f,               _motor_gain_cont[1]*-1.0f,         2);
-       add_motor_raw_6dof(AP_MOTORS_MOT_3, 0,                                   0,                              _motor_gain_cont[2]*1.0f,            0,                                     _motor_gain_cont[2]*1.0f,                _motor_gain_cont[2]*1.0f,          3);
-       add_motor_raw_6dof(AP_MOTORS_MOT_4, 0,                                   0,                              _motor_gain_cont[3]*-1.0f,           0,                                     _motor_gain_cont[3]*1.0f,                _motor_gain_cont[3]*-1.0f,         4);
-       add_motor_raw_6dof(AP_MOTORS_MOT_5, _motor_gain_cont[4]*-1.0f,           _motor_gain_cont[4]*1.0f,       0,                                  _motor_gain_cont[4]*1.0f,                0,                                       0,                                5);
-       add_motor_raw_6dof(AP_MOTORS_MOT_6, _motor_gain_cont[5]*1.0f,            _motor_gain_cont[5]*1.0f,       0,                                  _motor_gain_cont[5]*1.0f,                0,                                       0,                                6);
-       add_motor_raw_6dof(AP_MOTORS_MOT_7, _motor_gain_cont[6]*-1.0f,           _motor_gain_cont[6]*-1.0f,      0,                                  _motor_gain_cont[6]*1.0f,                0,                                       0,                                7);
-       add_motor_raw_6dof(AP_MOTORS_MOT_8, _motor_gain_cont[7]*1.0f,            _motor_gain_cont[7]*-1.0f,      0,                                  _motor_gain_cont[7]*1.0f,                0,                                       0,                                8);
-
-    break;
-    
     default:
         _frame_class_string = "DEFAULT";
         add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              -1.0f,          0,                  1.0f,               0,              1);
@@ -482,14 +315,15 @@ void AP_Motors6DOF::output_min()
     }
 }
 
-int16_t AP_Motors6DOF::calc_thrust_to_pwm(float thrust_in, uint8_t i) const
+int16_t AP_Motors6DOF::calc_thrust_to_pwm(float thrust_in, uint8_t motor) const
 {
+    // Forward/reverse linearisation: reverse thrust is weaker, so scale a reverse
+    // command up by that motor's fwd/rev ratio (MOTn_FRR). Set _frr[i]=1 to disable.
+    if (thrust_in < 0 && motor < 7 && _frr[motor] > 0) {
+        thrust_in = MAX(thrust_in * _frr[motor], -1.0f);
+    }
     int16_t range_up = get_pwm_output_max() - 1500;
     int16_t range_down = 1500 - get_pwm_output_min();
-    // Compensate for weaker reverse thrust
-    if (thrust_in < 0.0f) {
-        thrust_in = MAX(thrust_in * _fwd_rev_ratio[i], -1.0f);
-    }
     return 1500 + thrust_in * (thrust_in > 0 ? range_up : range_down);
 }
 
@@ -522,7 +356,7 @@ void AP_Motors6DOF::output_to_motors()
         // set motor output based on thrust requests
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
-               motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i], i);
+                motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i], i);
             }
         }
         break;
