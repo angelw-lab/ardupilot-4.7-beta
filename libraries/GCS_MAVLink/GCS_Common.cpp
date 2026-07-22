@@ -3938,7 +3938,8 @@ MAV_RESULT GCS_MAVLINK::set_ekf_origin(const Location& loc)
     // check if EKF origin has already been set
     Location ekf_origin;
     if (ahrs.get_origin(ekf_origin)) {
-        return MAV_RESULT_FAILED;
+     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "origin set already");
+    //Do Not return here
     }
 
     if (!ahrs.set_origin(loc)) {
