@@ -1,11 +1,3 @@
-// ============================================================================
-//  AP_Motors6DOF.cpp - EyeROV TROUT parameterised build (ArduSub axes: x fwd, y stbd, z DOWN)
-//  Requires in AP_Motors6DOF.h:
-//      AP_Float _tf[7][6];   // per-motor mixer factors (roll,pitch,yaw,thr,fwd,lat)
-//      AP_Float _frr[7];     // per-motor forward/reverse thrust ratio
-//      int16_t calc_thrust_to_pwm(float thrust_in, uint8_t motor) const;  // sig change
-//  Author: Vishal Raveendranathan - Senior Manager, R&D
-// ============================================================================
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -187,7 +179,7 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         remove_motor(i);
     }
 
-    // hard coded config for supported frames
+    // hard coded config for supported frames 
     switch ((sub_frame_t)frame_class) {
         //                 Motor #              Roll Factor     Pitch Factor    Yaw Factor      Throttle Factor     Forward Factor      Lateral Factor  Testing Order
     case SUB_FRAME_BLUEROV1:
@@ -356,7 +348,7 @@ void AP_Motors6DOF::output_to_motors()
         // set motor output based on thrust requests
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
-                motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i], i);
+            motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i], i);
             }
         }
         break;
