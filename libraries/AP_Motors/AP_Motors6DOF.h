@@ -40,7 +40,10 @@ public:
     void output_min() override;
 
     // Map thrust input -1~1 to pwm output 1100~1900
-  int16_t calc_thrust_to_pwm(float thrust_in, uint8_t i) const;
+    // motor index i is only consulted for LROV (applies LMOTn_FRR fwd/rev
+    // linearisation) - every other frame, including the reverted TROUT,
+    // gets a plain linear map regardless of i.
+    int16_t calc_thrust_to_pwm(float thrust_in, uint8_t i) const;
 
     // output_to_motors - sends minimum values out to the motors
     void output_to_motors() override;
@@ -73,19 +76,22 @@ protected:
     AP_Int8             _motor_reverse[AP_MOTORS_MAX_NUM_MOTORS];
     AP_Float            _motor_gain_cont[AP_MOTORS_MAX_NUM_MOTORS];
     AP_Float            _forwardVerticalCouplingFactor;
- // EyeROV TROUT parameterised mixer
-// axis index:
-// 0 = Roll
-// 1 = Pitch
-// 2 = Yaw
-// 3 = Throttle
-// 4 = Forward
-// 5 = Lateral
-AP_Float _tf[7][6];
 
-// Forward/Reverse thrust ratio for each motor
-AP_Float _frr[7];
-    
+    // EyeROV LROV (8 motors) parameterised mixer - QGC-tunable via LMOTn_*.
+    // TROUT has been reverted to hard-coded factors (scaled only by
+    // _motor_gain_cont) and no longer uses a _tf/_frr array of its own.
+    // axis index:
+    // 0 = Roll
+    // 1 = Pitch
+    // 2 = Yaw
+    // 3 = Throttle
+    // 4 = Forward
+    // 5 = Lateral
+    AP_Float _tf_lrov[8][6];
+
+    // Forward/Reverse thrust ratio for each LROV motor
+    AP_Float _frr_lrov[8];
+
     float               _forward_factor[AP_MOTORS_MAX_NUM_MOTORS]; // each motors contribution to forward/backward
     float               _lateral_factor[AP_MOTORS_MAX_NUM_MOTORS];  // each motors contribution to lateral (left/right)
 

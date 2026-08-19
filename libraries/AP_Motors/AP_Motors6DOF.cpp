@@ -1,3 +1,30 @@
+// ============================================================================
+//  AP_Motors6DOF.cpp - EyeROV parameterised build (ArduSub axes: x fwd, y stbd, z DOWN)
+//
+//  Rev. notes (this revision):
+//   - SUB_FRAME_TROUT reverted to the earlier HARD-CODED mixer (matches the
+//     factors in "EyeROV TROUT - 6-DOF Thrust Allocation" rev.2, scaled by the
+//     existing per-motor xMOTOR_G_ADJ gains, same pattern as TUNA/TSROV).
+//     The QGC-tunable MOTn_* / _tf[7][6] / _frr[7] scheme that had been added
+//     for TROUT has been removed from this frame.
+//   - NEW: SUB_FRAME_LROV (8 motors) added using that same QGC-tunable pattern
+//     instead - AP_Float _tf_lrov[8][6] (per-motor roll/pitch/yaw/throttle/
+//     forward/lateral) + AP_Float _frr_lrov[8] (per-motor fwd/rev thrust
+//     ratio), exposed as LMOTn_* parameters. Defaults are DERIVED from the
+//     real LROV geometry (4x DW25 horizontal @30 deg, all facing forward,
+//     confirmed toe-out; 4x DW15 vertical at the four corners) - see the
+//     "EyeROV LROV - 6-DOF Thrust Allocation" note. Only LMOTn_FRR is still a
+//     placeholder (1.0, no scaling) pending real DW25/DW15 fwd-vs-reverse
+//     thrust numbers.
+//
+//  Requires in AP_Motors6DOF.h (see accompanying AP_Motors6DOF.h in this delivery):
+//      AP_Float _tf_lrov[8][6];  // per-motor mixer factors for LROV (roll,pitch,yaw,thr,fwd,lat)
+//      AP_Float _frr_lrov[8];    // per-motor forward/reverse thrust ratio for LROV
+//      sub_frame_t already has SUB_FRAME_LROV (per your header)
+//      calc_thrust_to_pwm(float, uint8_t) keeps its existing single signature -
+//      it now branches internally on the active frame class to decide whether
+//      to apply the LMOTn_FRR scaling (LROV only).
+// ============================================================================
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -117,7 +144,7 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
     // @Values: 1:normal,-1:reverse
     // @User: Standard
     AP_GROUPINFO("12_DIRECTION", 13, AP_Motors6DOF, _motor_reverse[11], 1),
-   // Custom motor gain adjust
+    // Custom motor gain adjust
 
     AP_GROUPINFO("1MOTOR_G_ADJ", 14, AP_Motors6DOF, _motor_gain_cont[0], 1),
 
@@ -135,39 +162,57 @@ const AP_Param::GroupInfo AP_Motors6DOF::var_info[] = {
 
     AP_GROUPINFO("8MOTOR_G_ADJ", 21, AP_Motors6DOF, _motor_gain_cont[7], 1),
 
-    // ---- EYEROV_TROUT parameterised mixer factors & fwd/rev ratios ----
-    AP_GROUPINFO("MOT1_YAW", 22, AP_Motors6DOF, _tf[0][2], 1.00f),
-    AP_GROUPINFO("MOT1_FWD", 23, AP_Motors6DOF, _tf[0][4], -1.00f),
-    AP_GROUPINFO("MOT1_LAT", 24, AP_Motors6DOF, _tf[0][5], 1.00f),
-    AP_GROUPINFO("MOT2_YAW", 25, AP_Motors6DOF, _tf[1][2], -1.00f),
-    AP_GROUPINFO("MOT2_FWD", 26, AP_Motors6DOF, _tf[1][4], -1.00f),
-    AP_GROUPINFO("MOT2_LAT", 27, AP_Motors6DOF, _tf[1][5], -1.00f),
-    AP_GROUPINFO("MOT3_YAW", 28, AP_Motors6DOF, _tf[2][2], -1.00f),
-    AP_GROUPINFO("MOT3_FWD", 29, AP_Motors6DOF, _tf[2][4], 1.00f),
-    AP_GROUPINFO("MOT3_LAT", 30, AP_Motors6DOF, _tf[2][5], 0.78f),
-    AP_GROUPINFO("MOT4_YAW", 31, AP_Motors6DOF, _tf[3][2], 1.00f),
-    AP_GROUPINFO("MOT4_FWD", 32, AP_Motors6DOF, _tf[3][4], 1.00f),
-    AP_GROUPINFO("MOT4_LAT", 33, AP_Motors6DOF, _tf[3][5], -0.78f),
-    AP_GROUPINFO("MOT5_ROL", 34, AP_Motors6DOF, _tf[4][0], -1.00f),
-    AP_GROUPINFO("MOT5_PIT", 35, AP_Motors6DOF, _tf[4][1], 1.00f),
-    AP_GROUPINFO("MOT5_THR", 36, AP_Motors6DOF, _tf[4][3], 1.00f),
-    AP_GROUPINFO("MOT5_FWD", 37, AP_Motors6DOF, _tf[4][4], 0.00f),
-    AP_GROUPINFO("MOT5_LAT", 38, AP_Motors6DOF, _tf[4][5], 0.00f),
-    AP_GROUPINFO("MOT6_ROL", 39, AP_Motors6DOF, _tf[5][0], 1.00f),
-    AP_GROUPINFO("MOT6_PIT", 40, AP_Motors6DOF, _tf[5][1], 1.00f),
-    AP_GROUPINFO("MOT6_THR", 41, AP_Motors6DOF, _tf[5][3], 1.00f),
-    AP_GROUPINFO("MOT6_FWD", 42, AP_Motors6DOF, _tf[5][4], 0.00f),
-    AP_GROUPINFO("MOT6_LAT", 43, AP_Motors6DOF, _tf[5][5], 0.00f),
-    AP_GROUPINFO("MOT7_PIT", 44, AP_Motors6DOF, _tf[6][1], -0.96f),
-    AP_GROUPINFO("MOT7_THR", 45, AP_Motors6DOF, _tf[6][3], 0.76f),
-    AP_GROUPINFO("MOT7_FWD", 46, AP_Motors6DOF, _tf[6][4], 0.00f),
-    AP_GROUPINFO("MOT1_FRR", 47, AP_Motors6DOF, _frr[0], 1.54f),
-    AP_GROUPINFO("MOT2_FRR", 48, AP_Motors6DOF, _frr[1], 1.54f),
-    AP_GROUPINFO("MOT3_FRR", 49, AP_Motors6DOF, _frr[2], 1.54f),
-    AP_GROUPINFO("MOT4_FRR", 50, AP_Motors6DOF, _frr[3], 1.54f),
-    AP_GROUPINFO("MOT5_FRR", 51, AP_Motors6DOF, _frr[4], 1.35f),
-    AP_GROUPINFO("MOT6_FRR", 52, AP_Motors6DOF, _frr[5], 1.35f),
-    AP_GROUPINFO("MOT7_FRR", 53, AP_Motors6DOF, _frr[6], 1.54f),
+    // ---- EYEROV_LROV (8 motors) - QGC-tunable mixer factors & fwd/rev ratios ----
+    // Trimmed to only the axes that are structurally non-zero for each motor
+    // (same economy as the original TROUT scheme): MOT1-4 are the horizontal
+    // group, so only YAW/FWD/LAT are exposed (ROL/PIT/THR stay compiled-in 0,
+    // never registered); MOT5-8 are the vertical group, so only ROL/PIT/THR
+    // are exposed (YAW/FWD/LAT stay 0). Every motor also gets its own FRR.
+    // Values are DERIVED and CONFIRMED from the LROV geometry (4x DW25
+    // horizontal @30 deg off the surge axis, all facing forward, toe-out
+    // confirmed; 4x DW15 vertical at the four corners, 419 mm/215 mm/70 mm
+    // arms) via rigid-body wrench balance - see the accompanying "EyeROV
+    // LROV - 6-DOF Thrust Allocation" note. Still open: LMOTn_FRR is at 1.0
+    // (no scaling) pending real DW25/DW15 fwd-vs-reverse thrust numbers.
+    AP_GROUPINFO("LMOT1_YAW", 22, AP_Motors6DOF, _tf_lrov[0][2], 1.00f),
+    AP_GROUPINFO("LMOT1_FWD", 23, AP_Motors6DOF, _tf_lrov[0][4], 1.00f),
+    AP_GROUPINFO("LMOT1_LAT", 24, AP_Motors6DOF, _tf_lrov[0][5], 1.00f),
+    AP_GROUPINFO("LMOT1_FRR", 25, AP_Motors6DOF, _frr_lrov[0], 1.00f),
+
+    AP_GROUPINFO("LMOT2_YAW", 26, AP_Motors6DOF, _tf_lrov[1][2], -1.00f),
+    AP_GROUPINFO("LMOT2_FWD", 27, AP_Motors6DOF, _tf_lrov[1][4], 1.00f),
+    AP_GROUPINFO("LMOT2_LAT", 28, AP_Motors6DOF, _tf_lrov[1][5], -1.00f),
+    AP_GROUPINFO("LMOT2_FRR", 29, AP_Motors6DOF, _frr_lrov[1], 1.00f),
+
+    AP_GROUPINFO("LMOT3_YAW", 30, AP_Motors6DOF, _tf_lrov[2][2], -1.00f),
+    AP_GROUPINFO("LMOT3_FWD", 31, AP_Motors6DOF, _tf_lrov[2][4], 1.00f),
+    AP_GROUPINFO("LMOT3_LAT", 32, AP_Motors6DOF, _tf_lrov[2][5], -0.257f),
+    AP_GROUPINFO("LMOT3_FRR", 33, AP_Motors6DOF, _frr_lrov[2], 1.00f),
+
+    AP_GROUPINFO("LMOT4_YAW", 34, AP_Motors6DOF, _tf_lrov[3][2], 1.00f),
+    AP_GROUPINFO("LMOT4_FWD", 35, AP_Motors6DOF, _tf_lrov[3][4], 1.00f),
+    AP_GROUPINFO("LMOT4_LAT", 36, AP_Motors6DOF, _tf_lrov[3][5], 0.257f),
+    AP_GROUPINFO("LMOT4_FRR", 37, AP_Motors6DOF, _frr_lrov[3], 1.00f),
+
+    AP_GROUPINFO("LMOT5_ROL", 38, AP_Motors6DOF, _tf_lrov[4][0], 1.00f),
+    AP_GROUPINFO("LMOT5_PIT", 39, AP_Motors6DOF, _tf_lrov[4][1], -1.00f),
+    AP_GROUPINFO("LMOT5_THR", 40, AP_Motors6DOF, _tf_lrov[4][3], 1.00f),
+    AP_GROUPINFO("LMOT5_FRR", 41, AP_Motors6DOF, _frr_lrov[4], 1.00f),
+
+    AP_GROUPINFO("LMOT6_ROL", 42, AP_Motors6DOF, _tf_lrov[5][0], -1.00f),
+    AP_GROUPINFO("LMOT6_PIT", 43, AP_Motors6DOF, _tf_lrov[5][1], -1.00f),
+    AP_GROUPINFO("LMOT6_THR", 44, AP_Motors6DOF, _tf_lrov[5][3], 1.00f),
+    AP_GROUPINFO("LMOT6_FRR", 45, AP_Motors6DOF, _frr_lrov[5], 1.00f),
+
+    AP_GROUPINFO("LMOT7_ROL", 46, AP_Motors6DOF, _tf_lrov[6][0], 1.00f),
+    AP_GROUPINFO("LMOT7_PIT", 47, AP_Motors6DOF, _tf_lrov[6][1], 1.00f),
+    AP_GROUPINFO("LMOT7_THR", 48, AP_Motors6DOF, _tf_lrov[6][3], 1.00f),
+    AP_GROUPINFO("LMOT7_FRR", 49, AP_Motors6DOF, _frr_lrov[6], 1.00f),
+
+    AP_GROUPINFO("LMOT8_ROL", 50, AP_Motors6DOF, _tf_lrov[7][0], -1.00f),
+    AP_GROUPINFO("LMOT8_PIT", 51, AP_Motors6DOF, _tf_lrov[7][1], 1.00f),
+    AP_GROUPINFO("LMOT8_THR", 52, AP_Motors6DOF, _tf_lrov[7][3], 1.00f),
+    AP_GROUPINFO("LMOT8_FRR", 53, AP_Motors6DOF, _frr_lrov[7], 1.00f),
 
     AP_GROUPEND
 };
@@ -179,7 +224,7 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         remove_motor(i);
     }
 
-    // hard coded config for supported frames 
+    // hard coded config for supported frames
     switch ((sub_frame_t)frame_class) {
         //                 Motor #              Roll Factor     Pitch Factor    Yaw Factor      Throttle Factor     Forward Factor      Lateral Factor  Testing Order
     case SUB_FRAME_BLUEROV1:
@@ -248,16 +293,20 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         break;
 
     case SUB_FRAME_TROUT:
+        // ---- REVERTED to hard-coded factors (per EyeROV TROUT rev.2 derivation) ----
+        // roll/pitch/yaw/throttle/forward/lateral, scaled by the per-motor
+        // xMOTOR_G_ADJ gain (same pattern as TUNA/TSROV). No QGC per-axis
+        // params for this frame anymore - trim only via xMOTOR_G_ADJ.
         _frame_class_string = "EYEROV_TROUT";
-        // Factors and fwd/rev ratios come from the parameters above (QGC-tunable, no reflash needed).
-        // _tf[m][axis]: 0=roll 1=pitch 2=yaw 3=throttle 4=forward 5=lateral. See TROUT_thrust_allocation.docx.
-        for (uint8_t m = 0; m < 7; m++) {
-            add_motor_raw_6dof(AP_MOTORS_MOT_1 + m,
-                               _tf[m][0], _tf[m][1], _tf[m][2],   // roll, pitch, yaw
-                               _tf[m][3], _tf[m][4], _tf[m][5],   // throttle, forward, lateral
-                               m + 1);
-        }
+        add_motor_raw_6dof(AP_MOTORS_MOT_1,	    0,	                            0,	                            _motor_gain_cont[0]* 1.0f,	         0,	                                    _motor_gain_cont[0]*-1.0f,	           _motor_gain_cont[0]*1.0f,            1);
+        add_motor_raw_6dof(AP_MOTORS_MOT_2,	    0,                              0,	                            _motor_gain_cont[1]*-1.0f,	         0,	                                    _motor_gain_cont[1]*-1.0f,	           _motor_gain_cont[1]*-1.0f,	        2);
+        add_motor_raw_6dof(AP_MOTORS_MOT_3,	    0,                              0,	                            _motor_gain_cont[2]*-1.0f,           0,        	                            _motor_gain_cont[2]*1.0f,              _motor_gain_cont[2]*1.0f,            3);
+        add_motor_raw_6dof(AP_MOTORS_MOT_4,	    0,                              0,                              _motor_gain_cont[3]*1.0f,            0,        	                            _motor_gain_cont[3]*1.0f,              _motor_gain_cont[3]*-1.0f,           4);
+        add_motor_raw_6dof(AP_MOTORS_MOT_5,	    _motor_gain_cont[4]*-0.5f,      _motor_gain_cont[4]*0.5f,	    0, 	                                 _motor_gain_cont[4]*0.45f,	             0,                                     0,   	                            5);
+        add_motor_raw_6dof(AP_MOTORS_MOT_6,	    _motor_gain_cont[5]*0.5f,       _motor_gain_cont[5]*0.5f,	    0, 	                                 _motor_gain_cont[5]*0.45f,	             0,                                     0,   	                            6);
+        add_motor_raw_6dof(AP_MOTORS_MOT_7,	    0,                              _motor_gain_cont[6]*-1.0f,	    0, 	                                 _motor_gain_cont[6]*1.0f,	             0,                                     0,   	                            7);
         break;
+
     case SUB_FRAME_TSROV:
         _frame_class_string = "EYEROV_TSROV";
         add_motor_raw_6dof(AP_MOTORS_MOT_1,	    0,	                            0,	                            _motor_gain_cont[0]* -1.0f,	         0,	                                    _motor_gain_cont[0]*1.0f,	            0,                                  1);
@@ -267,6 +316,21 @@ void AP_Motors6DOF::setup_motors(motor_frame_class frame_class, motor_frame_type
         add_motor_raw_6dof(AP_MOTORS_MOT_5,	    0,                              _motor_gain_cont[4]*1.0f,	    0, 	                                 _motor_gain_cont[4]*1.0f,	             0,                                     0,   	                            5);
         add_motor_raw_6dof(AP_MOTORS_MOT_6,	    0,                              _motor_gain_cont[5]*-1.0f,	    0, 	                                 _motor_gain_cont[5]*1.0f,	             0,                                     0,   	                            6);
         break;
+
+    case SUB_FRAME_LROV:
+        // ---- EYEROV_LROV (8 motors) - factors come from the LMOTn_* parameters
+        // above (QGC-tunable, no reflash needed) - see file header. All default
+        // to 0.0f / inert until derived from real thruster geometry+thrust data.
+        // _tf_lrov[m][axis]: 0=roll 1=pitch 2=yaw 3=throttle 4=forward 5=lateral.
+        _frame_class_string = "EYEROV_LROV";
+        for (uint8_t m = 0; m < 8; m++) {
+            add_motor_raw_6dof(AP_MOTORS_MOT_1 + m,
+                               _tf_lrov[m][0], _tf_lrov[m][1], _tf_lrov[m][2],   // roll, pitch, yaw
+                               _tf_lrov[m][3], _tf_lrov[m][4], _tf_lrov[m][5],   // throttle, forward, lateral
+                               m + 1);
+        }
+        break;
+
     default:
         _frame_class_string = "DEFAULT";
         add_motor_raw_6dof(AP_MOTORS_MOT_1,     0,              0,              -1.0f,          0,                  1.0f,               0,              1);
@@ -307,12 +371,15 @@ void AP_Motors6DOF::output_min()
     }
 }
 
-int16_t AP_Motors6DOF::calc_thrust_to_pwm(float thrust_in, uint8_t motor) const
+// Map thrust input -1~1 to pwm output. The motor index is only used to apply
+// LROV's per-motor forward/reverse linearisation (LMOTn_FRR) - every other
+// frame (including the reverted TROUT) ignores it and gets a plain linear map.
+int16_t AP_Motors6DOF::calc_thrust_to_pwm(float thrust_in, uint8_t i) const
 {
-    // Forward/reverse linearisation: reverse thrust is weaker, so scale a reverse
-    // command up by that motor's fwd/rev ratio (MOTn_FRR). Set _frr[i]=1 to disable.
-    if (thrust_in < 0 && motor < 7 && _frr[motor] > 0) {
-        thrust_in = MAX(thrust_in * _frr[motor], -1.0f);
+    if ((sub_frame_t)_active_frame_class == SUB_FRAME_LROV) {
+        if (thrust_in < 0 && i < 8 && _frr_lrov[i] > 0) {
+            thrust_in = MAX(thrust_in * _frr_lrov[i], -1.0f);
+        }
     }
     int16_t range_up = get_pwm_output_max() - 1500;
     int16_t range_down = 1500 - get_pwm_output_min();
@@ -348,7 +415,7 @@ void AP_Motors6DOF::output_to_motors()
         // set motor output based on thrust requests
         for (i=0; i<AP_MOTORS_MAX_NUM_MOTORS; i++) {
             if (motor_enabled[i]) {
-            motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i], i);
+                motor_out[i] = calc_thrust_to_pwm(_thrust_rpyt_out[i], i);
             }
         }
         break;
